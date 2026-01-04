@@ -1,0 +1,79 @@
+name: Build Acode2 APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at 00:00 UTC
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Clone official Acode2
+        run: |
+          git clone --branch codemirror https://github.com/Acode-Foundation/Acode2.git
+          cd Acode2
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+
+      - name: Merge Build files
+        run: rsync -av --exclude='Acode2' ./ Acode2/
+
+      - name: Update package name
+        run: |
+          find . -type f -exec sed -i '/com\.foxdebug\.acode2/!s/com\.foxdebug\.acode/com.foxdebug.acode2/g' {} +
+        working-directory: Acode2
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install Node.js Packages
+        run: npm install
+        working-directory: Acode2
+
+      - name: Install Cordova CLI
+        run: npm install -g cordova
+
+      - name: Run npm setup
+        run: npm run setup
+        working-directory: Acode2
+
+      - name: Build paid dev APK
+        run: |
+          node utils/storage_manager.mjs y
+          npm run build paid dev apk
+        working-directory: Acode2
+
+      - name: Create Pre-Release and Upload APK
+        uses: ncipollo/release-action@v1
+        with:
+          tag: pre-release
+          name: Acode2 APK
+          body: |
+            Pre-release **Acode2** built from `codemirror` branch.
+
+            - Commit: [${{ env.COMMIT_SHA }}](https://github.com/Acode-Foundation/Acode2/commit/${{ env.COMMIT_SHA }})
+            - Build: Debug APK
+            - Package: `com.foxdebug.acode2` (can be installed alongside official Acode)
+          artifacts: Acode2/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          allowUpdates: true
+          replacesArtifacts: true
+          token: ${{ secrets.GITHUB_TOKEN }}
