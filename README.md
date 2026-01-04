@@ -11,7 +11,7 @@
 
 ## 🔹 Installation
 
-Download **Acode2 debug builds** from **[GitHub Releases](./releases)**.
+Download **Acode2 debug builds** from **[GitHub Releases](https://github.com/Jobians/acode-codemirror-apk/releases)**.
 
 > [!NOTE]
 > **No need to uninstall the original Acode app**  
